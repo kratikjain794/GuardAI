@@ -1,0 +1,51 @@
+# =========================
+# GuardIA Backend
+# =========================
+
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+python-dotenv==1.1.1
+pydantic==2.11.7
+
+# Database
+pymongo==4.14.1
+motor==3.7.1
+
+# Authentication
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.5.0
+python-multipart==0.0.20
+bcrypt==4.3.0
+
+
+# =========================
+# AI / Machine Learning
+# =========================
+
+torch
+torchaudio
+numpy
+scipy
+scikit-learn
+
+# Audio Processing
+librosa
+soundfile
+
+# Data Processing
+pandas
+
+# Computer Vision
+opencv-python
+pillow
+
+# YOLO - Camera Detection
+ultralytics
+
+# Visualization
+matplotlib
+
+# Utilities
+requests
+joblib
+email-validator

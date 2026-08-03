@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual Environment
+.venv/
+venv/
+
+# Environment
+.env
+
+# Models
+trained_models/
+*.pth
+
+# Datasets
+datasets/
+
+# Outputs
+runs/
+outputs/
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# YOLO weights
+backend/yolo11n.pt
+
+# Test images
+screenshots/

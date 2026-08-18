@@ -84,3 +84,5 @@ email-validator
 # =========================
 
 twilio==9.11.0
+
+gunicorn==23.0.0

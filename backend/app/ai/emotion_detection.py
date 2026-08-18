@@ -1,27 +1,34 @@
-from pathlib import Path
+﻿from pathlib import Path
 
+import librosa
 import torch
 
-from app.ai.emotion_model import EmotionCNNLSTM
-from app.ai.emotion_utils import extract_mfcc
-
-
-BASE_DIR = Path(__file__).resolve().parents[3]
-
-MODEL_PATH = (
-    BASE_DIR
-    / "trained_models"
-    / "emotion_model.pth"
+from transformers import (
+    AutoModelForAudioClassification,
+    AutoProcessor,
 )
 
 
-class EmotionDetector:
-    """
-    GuardIA speech emotion detector.
+# ==========================================
+# Configuration
+# ==========================================
 
-    Loads the trained CNN + BiLSTM model and
-    predicts emotion from a WAV audio file.
-    """
+MODEL_NAME = (
+    "Dpngtm/wav2vec2-emotion-recognition"
+)
+
+SAMPLE_RATE = 16000
+
+BASE_DIR = (
+    Path(__file__).resolve().parents[2]
+)
+
+
+# ==========================================
+# Emotion Detector
+# ==========================================
+
+class EmotionDetector:
 
     def __init__(self):
 
@@ -31,101 +38,216 @@ class EmotionDetector:
             else "cpu"
         )
 
-        if not MODEL_PATH.exists():
-            raise FileNotFoundError(
-                "Emotion model not found. "
-                "Run train_emotion.py first."
-            )
-
-        checkpoint = torch.load(
-            MODEL_PATH,
-            map_location=self.device,
+        print(
+            f"\nLoading pretrained Emotion Model on "
+            f"{self.device}"
         )
 
-        self.label_to_index = checkpoint[
-            "label_to_index"
-        ]
+        # ----------------------------------
+        # Processor
+        # ----------------------------------
 
-        self.index_to_label = {
-            index: label
-            for label, index
-            in self.label_to_index.items()
-        }
-
-        self.model = EmotionCNNLSTM(
-            num_classes=len(
-                self.label_to_index
+        self.processor = (
+            AutoProcessor.from_pretrained(
+                MODEL_NAME
             )
-        ).to(self.device)
+        )
 
-        self.model.load_state_dict(
-            checkpoint[
-                "model_state_dict"
-            ]
+        # ----------------------------------
+        # Pretrained Model
+        # ----------------------------------
+
+        self.model = (
+            AutoModelForAudioClassification
+            .from_pretrained(
+                MODEL_NAME
+            )
+            .to(self.device)
         )
 
         self.model.eval()
 
-    def predict(
-        self,
-        audio_path: str | Path,
-    ) -> dict:
+        # ----------------------------------
+        # Read labels directly from model
+        # ----------------------------------
 
-        audio_path = Path(audio_path)
+        self.id_to_label = (
+            self.model.config.id2label
+        )
 
-        if not audio_path.exists():
-            raise FileNotFoundError(
-                f"Audio file not found: {audio_path}"
+        print(
+            "\nEmotion Label Mapping:"
+        )
+
+        for index, label in (
+            self.id_to_label.items()
+        ):
+            print(
+                f"  {index} -> {label}"
             )
 
-        # MFCC: [40, 94]
-        features = extract_mfcc(
+        print(
+            "\nPretrained Emotion Model "
+            "Loaded Successfully!"
+        )
+
+
+    # ======================================
+    # Prediction
+    # ======================================
+
+    def predict(
+        self,
+        audio_path,
+    ):
+
+        audio_path = Path(
             audio_path
         )
 
-        tensor = torch.from_numpy(
-            features
-        ).float()
+        # ----------------------------------
+        # Check audio
+        # ----------------------------------
 
-        # [40, 94]
-        #      ↓
-        # [1, 40, 94]
-        tensor = tensor.unsqueeze(0)
+        if not audio_path.exists():
 
-        tensor = tensor.to(
-            self.device
+            raise FileNotFoundError(
+                f"Audio file not found:\n"
+                f"{audio_path}"
+            )
+
+        # ----------------------------------
+        # Load audio
+        # ----------------------------------
+
+        audio, sample_rate = (
+            librosa.load(
+                str(audio_path),
+                sr=SAMPLE_RATE,
+                mono=True,
+            )
         )
 
-        with torch.no_grad():
+        if len(audio) == 0:
 
-            logits = self.model(
-                tensor
+            raise ValueError(
+                "Audio file is empty."
             )
 
-            probabilities = torch.softmax(
-                logits,
-                dim=1
+        # ----------------------------------
+        # Processor
+        # ----------------------------------
+
+        inputs = self.processor(
+            audio,
+            sampling_rate=SAMPLE_RATE,
+            return_tensors="pt",
+            padding=True,
+        )
+
+        # ----------------------------------
+        # Move tensors to device
+        # ----------------------------------
+
+        inputs = {
+            key: value.to(self.device)
+            for key, value in inputs.items()
+        }
+
+        # ----------------------------------
+        # Prediction
+        # ----------------------------------
+
+        with torch.inference_mode():
+
+            outputs = self.model(
+                **inputs
             )
 
-            confidence, predicted_index = (
-                torch.max(
-                    probabilities,
-                    dim=1
+            probabilities = (
+                torch.softmax(
+                    outputs.logits,
+                    dim=-1,
                 )
             )
 
-        emotion = self.index_to_label[
-            predicted_index.item()
-        ]
+            prediction = (
+                torch.argmax(
+                    probabilities,
+                    dim=-1,
+                ).item()
+            )
 
-        confidence_percent = (
-            confidence.item() * 100
-        )
+            confidence = (
+                probabilities[
+                    0,
+                    prediction,
+                ].item()
+            )
+
+        # ----------------------------------
+        # Label
+        # ----------------------------------
+
+        emotion = self.id_to_label[
+            prediction
+        ]
 
         return {
             "emotion": emotion,
             "confidence": round(
-                confidence_percent,
-                2
+                confidence * 100,
+                2,
             ),
         }
+
+
+# ==========================================
+# Testing
+# ==========================================
+
+if __name__ == "__main__":
+
+    print(
+        "\n================================"
+    )
+
+    print(
+        "GuardAI Pretrained Emotion Detector"
+    )
+
+    print(
+        "================================"
+    )
+
+    detector = EmotionDetector()
+
+    print(
+        "\nMODEL OK"
+    )
+
+    test_audio = input(
+        "\nEnter WAV file path: "
+    ).strip()
+
+    result = detector.predict(
+        test_audio
+    )
+
+    print(
+        "\nPrediction"
+    )
+
+    print(
+        "------------------------------"
+    )
+
+    print(
+        "Emotion    :",
+        result["emotion"],
+    )
+
+    print(
+        "Confidence :",
+        f'{result["confidence"]}%',
+    )

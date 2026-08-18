@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database.database import check_database_connection
 from app.routes import (
     auth,
+    history,
     contacts,
     location,
     monitoring,
@@ -65,6 +66,7 @@ app.include_router(auth.router)
 app.include_router(contacts.router)
 app.include_router(location.router)
 app.include_router(sos.router)
+app.include_router(history.router)
 app.include_router(risk.router)
 app.include_router(monitoring.router)
 
@@ -93,3 +95,4 @@ async def health():
         "status": "healthy",
         "service": APP_NAME,
     }
+

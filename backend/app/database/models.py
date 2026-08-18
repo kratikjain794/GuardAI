@@ -8,9 +8,22 @@ from pydantic import BaseModel, EmailStr, Field
 # -------------------------
 
 class UserRegister(BaseModel):
-    name: str = Field(min_length=2, max_length=100)
+    name: str = Field(
+        min_length=2,
+        max_length=100,
+    )
+
+    phone: str = Field(
+        min_length=10,
+        max_length=15,
+    )
+
     email: EmailStr
-    password: str = Field(min_length=6, max_length=128)
+
+    password: str = Field(
+        min_length=6,
+        max_length=128,
+    )
 
 
 class UserLogin(BaseModel):
@@ -23,8 +36,16 @@ class UserLogin(BaseModel):
 # -------------------------
 
 class EmergencyContact(BaseModel):
-    name: str = Field(min_length=2, max_length=100)
-    phone: str = Field(min_length=7, max_length=20)
+    name: str = Field(
+        min_length=2,
+        max_length=100,
+    )
+
+    phone: str = Field(
+        min_length=7,
+        max_length=20,
+    )
+
     relation: str | None = None
 
 
@@ -33,8 +54,15 @@ class EmergencyContact(BaseModel):
 # -------------------------
 
 class LocationData(BaseModel):
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
+    latitude: float = Field(
+        ge=-90,
+        le=90,
+    )
+
+    longitude: float = Field(
+        ge=-180,
+        le=180,
+    )
 
 
 # -------------------------
@@ -42,8 +70,15 @@ class LocationData(BaseModel):
 # -------------------------
 
 class SOSRequest(BaseModel):
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
+    latitude: float = Field(
+        ge=-90,
+        le=90,
+    )
+
+    longitude: float = Field(
+        ge=-180,
+        le=180,
+    )
 
     message: str = (
         "Emergency! I need help. "

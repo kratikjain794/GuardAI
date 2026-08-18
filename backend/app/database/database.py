@@ -18,7 +18,7 @@ DATABASE_NAME = os.getenv(
 # MongoDB client
 client = AsyncIOMotorClient(MONGO_URI)
 
-# GuardIA database
+# GuardAI database
 database = client[DATABASE_NAME]
 
 # Collections
@@ -26,6 +26,11 @@ users_collection = database["users"]
 contacts_collection = database["contacts"]
 locations_collection = database["locations"]
 sos_collection = database["sos_alerts"]
+
+# Camera detection history
+camera_detections_collection = database[
+    "camera_detections"
+]
 
 
 async def check_database_connection() -> bool:
@@ -36,5 +41,7 @@ async def check_database_connection() -> bool:
         return True
 
     except Exception as error:
-        print(f"MongoDB connection failed: {error}")
+        print(
+            f"MongoDB connection failed: {error}"
+        )
         return False

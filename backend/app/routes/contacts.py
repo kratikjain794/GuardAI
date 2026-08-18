@@ -1,9 +1,22 @@
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
 
 from app.database.database import contacts_collection
-from app.database.models import EmergencyContact, current_time
+from app.database.models import (
+    EmergencyContact,
+    current_time,
+)
 from app.utils.helper import serialize_document
+from app.utils.security import decode_access_token
 
 
 router = APIRouter(
@@ -13,14 +26,78 @@ router = APIRouter(
 
 
 # ==========================================
-# Add Emergency Contact
+# AUTHENTICATION
 # ==========================================
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def add_contact(contact: EmergencyContact):
+bearer_scheme = HTTPBearer(
+    auto_error=True
+)
+
+
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Depends(
+        bearer_scheme
+    ),
+):
+    """
+    Get logged-in user's ID from JWT.
+    """
+
+    token = credentials.credentials
+
+    payload = decode_access_token(token)
+
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token",
+        )
+
+    user_id = payload.get("sub")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token",
+        )
+
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID",
+        )
+
+    return user_id
+
+
+# ==========================================
+# ADD EMERGENCY CONTACT
+# ==========================================
+
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_contact(
+    contact: EmergencyContact,
+    user_id: str = Depends(
+        get_current_user_id
+    ),
+):
 
     contact_document = {
-        **contact.model_dump(),
+        "user_id": user_id,
+
+        "name": contact.name.strip(),
+
+        "phone": contact.phone.strip(),
+
+        "relation": (
+            contact.relation.strip()
+            if contact.relation
+            else None
+        ),
+
         "created_at": current_time(),
     }
 
@@ -29,83 +106,160 @@ async def add_contact(contact: EmergencyContact):
     )
 
     return {
-        "message": "Emergency contact added successfully",
+        "message":
+            "Emergency contact added successfully",
+
         "contact": {
-            "id": str(result.inserted_id),
-            **contact.model_dump(),
+            "id":
+                str(result.inserted_id),
+
+            "user_id":
+                user_id,
+
+            "name":
+                contact_document["name"],
+
+            "phone":
+                contact_document["phone"],
+
+            "relation":
+                contact_document["relation"],
         },
     }
 
 
 # ==========================================
-# Get All Emergency Contacts
+# GET MY EMERGENCY CONTACTS
 # ==========================================
 
 @router.get("/")
-async def get_contacts():
+async def get_contacts(
+    user_id: str = Depends(
+        get_current_user_id
+    ),
+):
 
     contacts = []
 
-    async for contact in contacts_collection.find():
+    async for contact in contacts_collection.find(
+        {
+            "user_id": user_id
+        }
+    ):
+
         contacts.append(
             serialize_document(contact)
         )
 
     return {
-        "count": len(contacts),
-        "contacts": contacts,
+        "count":
+            len(contacts),
+
+        "contacts":
+            contacts,
     }
 
 
 # ==========================================
-# Get Single Contact
+# GET SINGLE CONTACT
 # ==========================================
 
-@router.get("/{contact_id}")
-async def get_contact(contact_id: str):
+@router.get(
+    "/{contact_id}"
+)
+async def get_contact(
+    contact_id: str,
 
-    if not ObjectId.is_valid(contact_id):
+    user_id: str = Depends(
+        get_current_user_id
+    ),
+):
+
+    if not ObjectId.is_valid(
+        contact_id
+    ):
+
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid contact ID",
+            status_code=
+                status.HTTP_400_BAD_REQUEST,
+
+            detail=
+                "Invalid contact ID",
         )
 
     contact = await contacts_collection.find_one(
-        {"_id": ObjectId(contact_id)}
+        {
+            "_id":
+                ObjectId(contact_id),
+
+            "user_id":
+                user_id,
+        }
     )
 
     if not contact:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Contact not found",
+            status_code=
+                status.HTTP_404_NOT_FOUND,
+
+            detail=
+                "Contact not found",
         )
 
-    return serialize_document(contact)
+    return serialize_document(
+        contact
+    )
 
 
 # ==========================================
-# Delete Emergency Contact
+# DELETE EMERGENCY CONTACT
 # ==========================================
 
-@router.delete("/{contact_id}")
-async def delete_contact(contact_id: str):
+@router.delete(
+    "/{contact_id}"
+)
+async def delete_contact(
+    contact_id: str,
 
-    if not ObjectId.is_valid(contact_id):
+    user_id: str = Depends(
+        get_current_user_id
+    ),
+):
+
+    if not ObjectId.is_valid(
+        contact_id
+    ):
+
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid contact ID",
+            status_code=
+                status.HTTP_400_BAD_REQUEST,
+
+            detail=
+                "Invalid contact ID",
         )
 
     result = await contacts_collection.delete_one(
-        {"_id": ObjectId(contact_id)}
+        {
+            "_id":
+                ObjectId(contact_id),
+
+            "user_id":
+                user_id,
+        }
     )
 
     if result.deleted_count == 0:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Contact not found",
+            status_code=
+                status.HTTP_404_NOT_FOUND,
+
+            detail=
+                "Contact not found",
         )
 
     return {
-        "message": "Emergency contact deleted successfully"
+        "message":
+            "Emergency contact deleted successfully"
     }

@@ -1,0 +1,1171 @@
+/* =========================================================
+   GLOBAL
+========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: #faf9fd;
+  color: #20202a;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   LOGIN / REGISTER PAGE
+========================================================= */
+
+.login-page {
+  min-height: 100vh;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px 20px;
+
+  background:
+    radial-gradient(
+      circle at 10% 10%,
+      rgba(112, 66, 198, 0.16),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 90% 90%,
+      rgba(233, 54, 79, 0.08),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #faf9fd 0%,
+      #f4effb 100%
+    );
+}
+
+.login-card {
+  width: 100%;
+  max-width: 460px;
+
+  padding: 42px 40px;
+
+  background: #ffffff;
+
+  border: 1px solid #eee8f5;
+
+  border-radius: 24px;
+
+  text-align: center;
+
+  box-shadow:
+    0 20px 60px rgba(50, 20, 80, 0.12);
+}
+
+.login-logo {
+  width: 68px;
+  height: 68px;
+
+  margin: 0 auto 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7042c6,
+      #9a67e8
+    );
+
+  font-size: 32px;
+
+  box-shadow:
+    0 10px 25px rgba(112, 66, 198, 0.25);
+}
+
+.login-card h1 {
+  margin: 0;
+
+  color: #20202a;
+
+  font-size: 34px;
+  font-weight: 800;
+
+  letter-spacing: -0.5px;
+}
+
+.login-subtitle {
+  margin: 8px 0 28px;
+
+  color: #7042c6;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.login-card h2 {
+  margin: 0 0 8px;
+
+  color: #20202a;
+
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.login-description {
+  margin: 0 0 25px;
+
+  color: #777;
+
+  font-size: 14px;
+
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   LOGIN FORM
+========================================================= */
+
+.login-card form {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 13px;
+}
+
+.login-card input {
+  width: 100%;
+  height: 48px;
+
+  padding: 0 15px;
+
+  border: 1px solid #ddd5e9;
+
+  border-radius: 11px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #20202a;
+
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.login-card input::placeholder {
+  color: #999;
+}
+
+.login-card input:hover {
+  border-color: #cbb5ee;
+}
+
+.login-card input:focus {
+  border-color: #7042c6;
+
+  box-shadow:
+    0 0 0 3px rgba(112, 66, 198, 0.12);
+
+  background: #ffffff;
+}
+
+
+/* =========================================================
+   LOGIN / REGISTER BUTTON
+========================================================= */
+
+.primary-button {
+  width: 100%;
+  height: 48px;
+
+  margin-top: 5px;
+
+  border: none;
+  border-radius: 11px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7042c6,
+      #8a55d5
+    );
+
+  color: #ffffff;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  box-shadow:
+    0 8px 20px rgba(112, 66, 198, 0.22);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 10px 25px rgba(112, 66, 198, 0.30);
+}
+
+.primary-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   LOGIN / REGISTER SWITCH BUTTON
+========================================================= */
+
+.switch-button {
+  width: 100%;
+
+  margin-top: 18px;
+
+  padding: 10px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #7042c6;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.switch-button:hover {
+  color: #4b247c;
+
+  text-decoration: underline;
+}
+
+
+/* =========================================================
+   SUCCESS / ERROR MESSAGE
+========================================================= */
+
+.success-message {
+  margin: 15px 0 0;
+
+  padding: 11px 13px;
+
+  border-radius: 10px;
+
+  background: #ecf9f1;
+
+  color: #20834a;
+
+  font-size: 13px;
+
+  line-height: 1.4;
+}
+
+.error-message {
+  margin: 15px 0 0;
+
+  padding: 11px 13px;
+
+  border-radius: 10px;
+
+  background: #fff0f2;
+
+  color: #c52d45;
+
+  font-size: 13px;
+
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+.dashboard {
+  min-height: 100vh;
+
+  display: flex;
+
+  background: #faf9fd;
+}
+
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.sidebar {
+  width: 245px;
+  min-height: 100vh;
+
+  background:
+    linear-gradient(
+      180deg,
+      #4b247c,
+      #321653
+    );
+
+  color: white;
+
+  padding: 25px 15px;
+
+  position: fixed;
+
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  z-index: 100;
+}
+
+.logo {
+  padding: 5px 15px 30px;
+}
+
+.logo h1 {
+  margin: 0;
+
+  font-size: 28px;
+}
+
+.logo p {
+  margin: 5px 0 0;
+
+  font-size: 12px;
+
+  opacity: 0.8;
+}
+
+.nav-menu {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.nav-item {
+  width: 100%;
+
+  border: none;
+
+  background: transparent;
+
+  color: #eee6fa;
+
+  padding: 13px 15px;
+
+  border-radius: 12px;
+
+  text-align: left;
+
+  font-size: 14px;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.nav-item.active {
+  background:
+    linear-gradient(
+      90deg,
+      #9a67e8,
+      #8250d2
+    );
+
+  color: white;
+
+  box-shadow:
+    0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-bottom {
+  position: absolute;
+
+  left: 15px;
+  right: 15px;
+  bottom: 20px;
+
+  background: rgba(255, 255, 255, 0.1);
+
+  padding: 20px;
+
+  border-radius: 16px;
+}
+
+.sidebar-bottom h4 {
+  margin: 0 0 8px;
+}
+
+.sidebar-bottom p {
+  margin: 0;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  opacity: 0.85;
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.main {
+  margin-left: 245px;
+
+  width: calc(100% - 245px);
+
+  padding: 28px 32px;
+}
+
+.header {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin-bottom: 28px;
+}
+
+.header h2 {
+  margin: 0;
+
+  font-size: 26px;
+}
+
+.header p {
+  margin: 7px 0 0;
+
+  color: #777;
+}
+
+.profile {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.profile-avatar {
+  width: 42px;
+  height: 42px;
+
+  border-radius: 50%;
+
+  background: #eadcff;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  font-size: 19px;
+}
+
+.profile-name {
+  font-weight: 600;
+}
+
+.profile-email {
+  color: #888;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   STATUS CARDS
+========================================================= */
+
+.status-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap: 18px;
+
+  margin-bottom: 20px;
+}
+
+.status-card {
+  background: white;
+
+  border-radius: 18px;
+
+  padding: 20px;
+
+  border: 1px solid #eee8f5;
+
+  box-shadow:
+    0 5px 20px rgba(50, 20, 80, 0.04);
+}
+
+.status-title {
+  color: #666;
+
+  font-size: 14px;
+}
+
+.status-value {
+  margin-top: 12px;
+
+  font-size: 27px;
+
+  font-weight: 700;
+}
+
+.safe {
+  color: #21a366;
+}
+
+.low {
+  color: #e58b20;
+}
+
+.active {
+  color: #7042c6;
+}
+
+.contacts-count {
+  color: #7042c6;
+}
+
+.status-small {
+  margin-top: 8px;
+
+  color: #888;
+
+  font-size: 12px;
+}
+
+.status-badge {
+  display: inline-block;
+
+  margin-top: 12px;
+
+  padding: 5px 10px;
+
+  border-radius: 20px;
+
+  background: #f0eaff;
+
+  color: #7042c6;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   CONTENT GRID
+========================================================= */
+
+.content-grid {
+  display: grid;
+
+  grid-template-columns:
+    1.1fr 1.4fr 1.1fr;
+
+  gap: 18px;
+}
+
+.card {
+  background: white;
+
+  border: 1px solid #eee8f5;
+
+  border-radius: 18px;
+
+  padding: 22px;
+
+  box-shadow:
+    0 5px 20px rgba(50, 20, 80, 0.04);
+}
+
+.card-header {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin-bottom: 18px;
+}
+
+.card-header h3 {
+  margin: 0;
+
+  font-size: 17px;
+}
+
+.view-all {
+  border: none;
+
+  background: none;
+
+  color: #7042c6;
+
+  cursor: pointer;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   SOS
+========================================================= */
+
+.sos-card {
+  background:
+    linear-gradient(
+      145deg,
+      #fff5f6,
+      #fff
+    );
+}
+
+.sos-content {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+}
+
+.sos-info {
+  max-width: 170px;
+}
+
+.sos-info p {
+  color: #777;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+.sos-button {
+  width: 125px;
+  height: 125px;
+
+  border-radius: 50%;
+
+  border: 10px solid #ffe0e4;
+
+  background: #e9364f;
+
+  color: white;
+
+  font-size: 25px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 25px rgba(233, 54, 79, 0.3);
+
+  transition: 0.2s;
+}
+
+.sos-button:hover {
+  transform: scale(1.05);
+}
+
+.sos-note {
+  margin-top: 20px;
+
+  padding: 12px;
+
+  border-radius: 10px;
+
+  background: #fff0f2;
+
+  color: #a33;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   LOCATION
+========================================================= */
+
+.map {
+  height: 190px;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #e7f0e8,
+      #edf2f7
+    );
+
+  position: relative;
+
+  overflow: hidden;
+}
+
+.map::before {
+  content: "";
+
+  position: absolute;
+
+  width: 140%;
+  height: 2px;
+
+  background: #c9d3c9;
+
+  transform: rotate(20deg);
+
+  top: 70px;
+
+  left: -20%;
+
+  box-shadow:
+    0 35px #c9d3c9,
+    0 70px #c9d3c9;
+}
+
+.map-pin {
+  position: absolute;
+
+  left: 50%;
+  top: 48%;
+
+  transform:
+    translate(-50%, -50%);
+
+  width: 25px;
+  height: 25px;
+
+  background: #e9364f;
+
+  border: 5px solid white;
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.location-text {
+  margin-top: 15px;
+
+  color: #555;
+
+  font-size: 13px;
+}
+
+.location-button {
+  margin-top: 12px;
+
+  border: 1px solid #cbb5ee;
+
+  background: white;
+
+  color: #7042c6;
+
+  padding: 9px 15px;
+
+  border-radius: 9px;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   CONTACTS
+========================================================= */
+
+.contact {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 13px 0;
+
+  border-bottom: 1px solid #eee;
+}
+
+.contact:last-child {
+  border-bottom: none;
+}
+
+.contact-avatar {
+  width: 38px;
+  height: 38px;
+
+  border-radius: 50%;
+
+  background: #f0eaff;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-name {
+  font-weight: 600;
+
+  font-size: 13px;
+}
+
+.contact-number {
+  color: #888;
+
+  font-size: 11px;
+
+  margin-top: 3px;
+}
+
+.call-button {
+  width: 35px;
+  height: 35px;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: #f2eaff;
+
+  color: #7042c6;
+
+  cursor: pointer;
+}
+
+.add-contact {
+  width: 100%;
+
+  padding: 11px;
+
+  margin-top: 10px;
+
+  border: 1px dashed #bfa2e9;
+
+  background: white;
+
+  color: #7042c6;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   LOWER CARDS
+========================================================= */
+
+.lower-grid {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr 1fr;
+
+  gap: 18px;
+
+  margin-top: 18px;
+}
+
+.activity-item,
+.tip-item {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 13px 0;
+
+  border-bottom: 1px solid #eee;
+}
+
+.activity-item:last-child,
+.tip-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon,
+.tip-icon {
+  width: 35px;
+  height: 35px;
+
+  border-radius: 50%;
+
+  background: #f0eaff;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+}
+
+.item-text {
+  font-size: 13px;
+}
+
+.item-subtext {
+  color: #999;
+
+  font-size: 11px;
+
+  margin-top: 3px;
+}
+
+
+/* =========================================================
+   HELP
+========================================================= */
+
+.help-card {
+  background:
+    linear-gradient(
+      145deg,
+      #f7f1ff,
+      #fff
+    );
+}
+
+.help-card p {
+  color: #777;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+.help-button {
+  width: 100%;
+
+  border: none;
+
+  padding: 12px;
+
+  border-radius: 10px;
+
+  background: #7042c6;
+
+  color: white;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.footer-banner {
+  margin-top: 18px;
+
+  padding: 20px 25px;
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #f5edff,
+      #fff5f7
+    );
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+}
+
+.footer-banner strong {
+  color: #7042c6;
+}
+
+.footer-banner p {
+  margin: 4px 0 0;
+
+  color: #777;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   RESPONSIVE - DASHBOARD
+========================================================= */
+
+@media (max-width: 1100px) {
+  .status-grid {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+  .content-grid,
+  .lower-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   RESPONSIVE - MOBILE
+========================================================= */
+
+@media (max-width: 750px) {
+
+  .sidebar {
+    width: 75px;
+
+    padding: 20px 10px;
+  }
+
+  .logo h1 {
+    font-size: 0;
+  }
+
+  .logo h1::after {
+    content: "G";
+
+    font-size: 25px;
+  }
+
+  .logo p,
+  .nav-item span,
+  .sidebar-bottom {
+    display: none;
+  }
+
+  .nav-item {
+    text-align: center;
+
+    font-size: 20px;
+  }
+
+  .main {
+    margin-left: 75px;
+
+    width: calc(100% - 75px);
+
+    padding: 20px;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .login-page {
+    padding: 20px 15px;
+  }
+
+  .login-card {
+    max-width: 100%;
+
+    padding: 32px 24px;
+
+    border-radius: 20px;
+  }
+
+  .login-card h1 {
+    font-size: 30px;
+  }
+
+  .login-card h2 {
+    font-size: 22px;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE
+========================================================= */
+
+@media (max-width: 400px) {
+
+  .login-card {
+    padding: 28px 18px;
+  }
+
+  .login-logo {
+    width: 58px;
+    height: 58px;
+
+    font-size: 27px;
+  }
+
+  .login-card h1 {
+    font-size: 28px;
+  }
+
+  .login-card h2 {
+    font-size: 20px;
+  }
+}

@@ -1,11 +1,10 @@
-from pathlib import Path
-
 import torch
 from torch.utils.data import Dataset
 
 from app.ai.combined_dataset import (
     load_all_datasets,
 )
+
 from app.ai.emotion_utils import (
     extract_mfcc,
 )
@@ -25,17 +24,25 @@ EMOTIONS = [
     "surprised",
 ]
 
-
 LABEL_TO_INDEX = {
     emotion: index
     for index, emotion in enumerate(EMOTIONS)
 }
 
-
 INDEX_TO_LABEL = {
     index: emotion
     for emotion, index in LABEL_TO_INDEX.items()
 }
+
+
+# ==========================================
+# Emotion Mapping
+# ==========================================
+
+EMOTION_MAPPING = {
+    "calm": "neutral",
+}
+
 
 # ==========================================
 # Emotion Dataset V3
@@ -52,9 +59,7 @@ class EmotionDatasetV3(Dataset):
 
     def __len__(self):
 
-        return len(
-            self.samples
-        )
+        return len(self.samples)
 
     def __getitem__(
         self,
@@ -63,18 +68,38 @@ class EmotionDatasetV3(Dataset):
 
         sample = self.samples[index]
 
+        # -----------------------------
+        # MFCC Features
+        # -----------------------------
+
         features = extract_mfcc(
             sample.path
         )
 
+        # -----------------------------
+        # Normalize Emotion Label
+        # -----------------------------
+
+        emotion = sample.emotion.lower().strip()
+
+        if emotion in EMOTION_MAPPING:
+            emotion = EMOTION_MAPPING[emotion]
+
+        if emotion not in LABEL_TO_INDEX:
+            raise ValueError(
+                f"Unknown emotion found: {emotion}"
+            )
+
         label = LABEL_TO_INDEX[
-            sample.emotion
+            emotion
         ]
 
         return (
+
             torch.from_numpy(
                 features
             ).float(),
+
             torch.tensor(
                 label,
                 dtype=torch.long,
@@ -82,7 +107,6 @@ class EmotionDatasetV3(Dataset):
         )
 
 
-    
 # ==========================================
 # Loader
 # ==========================================
@@ -91,11 +115,13 @@ def create_dataset():
 
     samples = load_all_datasets()
 
-    dataset = EmotionDatasetV3(
-        samples
+    print(
+        f"\nLoaded {len(samples)} samples."
     )
 
-    return dataset
+    return EmotionDatasetV3(
+        samples
+    )
 
 
 # ==========================================
@@ -115,18 +141,25 @@ if __name__ == "__main__":
     print("==============================")
 
     print(
-        f"Samples : "
-        f"{len(dataset)}"
+        "Total Samples :",
+        len(dataset),
     )
 
     features, label = dataset[0]
 
     print(
-        f"MFCC Shape : "
-        f"{features.shape}"
+        "MFCC Shape :",
+        features.shape,
     )
 
     print(
-        f"Label : "
-        f"{label}"
+        "Label Index :",
+        label.item(),
+    )
+
+    print(
+        "Label Name :",
+        INDEX_TO_LABEL[
+            label.item()
+        ],
     )

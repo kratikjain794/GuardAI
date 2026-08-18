@@ -1,36 +1,116 @@
+# ==============================
 # Python
+# ==============================
 __pycache__/
 *.py[cod]
+*.pyo
 
-# Virtual Environment
+# Virtual environments
 .venv/
 venv/
+env/
+ENV/
 
-# Environment
+# ==============================
+# Environment / Secrets
+# ==============================
 .env
+.env.*
+!.env.example
 
-# Models
-trained_models/
+# ==============================
+# ML Models / Checkpoints
+# ==============================
 *.pth
+*.pt
+*.ckpt
+*.onnx
+*.h5
+*.keras
 
-# Datasets
+# ==============================
+# Datasets / User Data
+# ==============================
 datasets/
+uploads/
+*.wav
+*.mp3
+*.flac
+*.ogg
 
-# Outputs
+# ==============================
+# Training Outputs
+# ==============================
 runs/
 outputs/
 logs/
+wandb/
+tensorboard/
 
-# IDE
+# ==============================
+# Python caches / temp
+# ==============================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# ==============================
+# Jupyter
+# ==============================
+.ipynb_checkpoints/
+
+# ==============================
+# Node / Frontend
+# ==============================
+node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+dist/
+
+# ==============================
+# Frontend environment
+# ==============================
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# ==============================
+# OS / Editor
+# ==============================
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
 
-# YOLO weights
-backend/yolo11n.pt
+# ==============================
+# Temporary / Backup files
+# ==============================
+*.tmp
+*.temp
+*.bak
+*_backup.py
+*_backup.jsx
 
-# Test images
-screenshots/
+# ==============================
+# Screenshots / Local test files
+# ==============================
+# Keep screenshots if they are useful for README/demo.
+# Uncomment if you don't want them:
+# screenshots/
+
+
+frontend/src/app_recovered_test.jsx
+
+
+
+# Backup / recovery files
+**/*_backup.py
+**/*_backup.jsx
+**/sos_backup_*.py
+**/*_recovered*.jsx
+
+
+frontend/src/app_backup_before_encoding_fix.jsx

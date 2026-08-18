@@ -49,3 +49,4 @@ matplotlib
 requests
 joblib
 email-validator
+twilio

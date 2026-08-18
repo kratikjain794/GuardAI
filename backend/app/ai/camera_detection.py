@@ -3,42 +3,91 @@ from pathlib import Path
 from ultralytics import YOLO
 
 
-BASE_DIR = Path(__file__).resolve().parents[3]
+# ==========================================
+# Project Paths
+# ==========================================
 
-MODEL_DIR = BASE_DIR / "trained_models"
+BASE_DIR = Path(__file__).resolve().parents[2]
 
-YOLO_MODEL = "yolo11n.pt"
+MODEL_PATH = BASE_DIR / "yolo11n.pt"
 
+
+# ==========================================
+# Configuration
+# ==========================================
+
+CONFIDENCE_THRESHOLD = 0.40
+
+
+# ==========================================
+# Camera / Human Detector
+# ==========================================
 
 class CameraDetector:
 
     def __init__(self):
 
-        # YOLO model.
-        # First run may download pretrained weights.
-        self.model = YOLO(YOLO_MODEL)
+        if not MODEL_PATH.exists():
 
-    def detect(self, image_path):
+            raise FileNotFoundError(
+                f"YOLO model not found:\n{MODEL_PATH}"
+            )
 
-        image_path = Path(image_path)
+        print(
+            f"Loading Human Detection Model:\n"
+            f"{MODEL_PATH}"
+        )
+
+        self.model = YOLO(
+            str(MODEL_PATH)
+        )
+
+        print(
+            "Human Detection Model Loaded Successfully!"
+        )
+
+
+    # ======================================
+    # Detect Humans
+    # ======================================
+
+    def detect(
+        self,
+        image_path,
+    ):
+
+        image_path = Path(
+            image_path
+        )
 
         if not image_path.exists():
+
             raise FileNotFoundError(
-                f"Image not found: {image_path}"
+                f"Image not found:\n{image_path}"
             )
 
         results = self.model.predict(
+
             source=str(image_path),
-            conf=0.40,
+
+            conf=CONFIDENCE_THRESHOLD,
+
             verbose=False,
+
         )
 
         people = []
+
+
+        # ==================================
+        # Process Results
+        # ==================================
 
         for result in results:
 
             if result.boxes is None:
                 continue
+
 
             for box in result.boxes:
 
@@ -50,50 +99,76 @@ class CameraDetector:
                     self.model.names[class_id]
                 )
 
-                # Only detect people
+
+                # --------------------------
+                # Person Only
+                # --------------------------
+
                 if class_name != "person":
                     continue
+
 
                 confidence = float(
                     box.conf.item()
                 )
 
+
                 coordinates = (
                     box.xyxy[0]
+                    .detach()
                     .cpu()
                     .tolist()
                 )
 
-                people.append(
-                    {
-                        "confidence": round(
+
+                people.append({
+
+                    "confidence":
+                        round(
                             confidence * 100,
                             2,
                         ),
-                        "bounding_box": {
-                            "x1": round(
+
+                    "bounding_box": {
+
+                        "x1":
+                            round(
                                 coordinates[0],
                                 2,
                             ),
-                            "y1": round(
+
+                        "y1":
+                            round(
                                 coordinates[1],
                                 2,
                             ),
-                            "x2": round(
+
+                        "x2":
+                            round(
                                 coordinates[2],
                                 2,
                             ),
-                            "y2": round(
+
+                        "y2":
+                            round(
                                 coordinates[3],
                                 2,
                             ),
-                        },
-                    }
-                )
+                    },
+                })
 
-        person_count = len(people)
+
+        # ==================================
+        # Final Result
+        # ==================================
+
+        person_count = len(
+            people
+        )
+
 
         return {
+
             "person_detected":
                 person_count > 0,
 
@@ -102,4 +177,81 @@ class CameraDetector:
 
             "people":
                 people,
+
         }
+
+
+# ==========================================
+# Testing
+# ==========================================
+
+if __name__ == "__main__":
+
+    print(
+        "\n=============================="
+    )
+
+    print(
+        "GuardAI Human Detection"
+    )
+
+    print(
+        "=============================="
+    )
+
+
+    detector = CameraDetector()
+
+
+    image_path = input(
+        "\nEnter image path: "
+    ).strip()
+
+
+    result = detector.detect(
+        image_path
+    )
+
+
+    print(
+        "\n=============================="
+    )
+
+    print(
+        "Detection Result"
+    )
+
+    print(
+        "=============================="
+    )
+
+
+    print(
+        f"Person Detected : "
+        f"{result['person_detected']}"
+    )
+
+    print(
+        f"Person Count    : "
+        f"{result['person_count']}"
+    )
+
+
+    for index, person in enumerate(
+        result["people"],
+        start=1,
+    ):
+
+        print(
+            f"\nPerson {index}"
+        )
+
+        print(
+            f"Confidence : "
+            f"{person['confidence']}%"
+        )
+
+        print(
+            f"Bounding Box : "
+            f"{person['bounding_box']}"
+        )

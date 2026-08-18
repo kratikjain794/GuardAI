@@ -62,7 +62,7 @@ pandas
 # Computer Vision
 # =========================
 
-opencv-python
+opencv-python-headless==5.0.0.93
 pillow
 
 # =========================

@@ -19,7 +19,7 @@ from app.utils.constants import APP_NAME, APP_VERSION
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Runs when GuardIA API starts and shuts down.
+    Runs when GuardAI API starts and shuts down.
     """
 
     database_connected = await check_database_connection()
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    print("GuardIA API shutting down")
+    print("GuardAI API shutting down")
 
 
 app = FastAPI(
@@ -49,8 +49,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        # Local development
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+
+        # Production frontend - Vercel
+        "https://guard-ai-mauve.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -81,7 +85,7 @@ async def root():
         "project": APP_NAME,
         "version": APP_VERSION,
         "status": "running",
-        "message": "GuardIA API is running successfully",
+        "message": "GuardAI API is running successfully",
     }
 
 
@@ -95,4 +99,3 @@ async def health():
         "status": "healthy",
         "service": APP_NAME,
     }
-

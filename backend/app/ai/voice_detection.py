@@ -1,42 +1,29 @@
-from pathlib import Path
-
+import numpy as np
+import soundfile as sf
 import torch
 
-from app.ai.voice_model_v3 import (
-    VoiceDistressModelV3,
-)
-
-from app.ai.emotion_utils import (
-    extract_mfcc,
+from transformers import (
+    AutoFeatureExtractor,
+    AutoModelForAudioClassification,
 )
 
 
 # ==========================================
-# Model Path
+# Pretrained Model
 # ==========================================
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+MODEL_NAME = "Dpngtm/wav2vec2-emotion-recognition"
 
-MODEL_PATH = (
-    BASE_DIR
-    / "trained_models"
-    / "distress_last_v3.pth"
-)
+TARGET_SAMPLE_RATE = 16000
 
 
 # ==========================================
-# Voice Distress Detector
+# Voice Emotion / Distress Detector
 # ==========================================
 
 class VoiceDistressDetector:
 
     def __init__(self):
-
-        if not MODEL_PATH.exists():
-
-            raise FileNotFoundError(
-                f"Model not found:\n{MODEL_PATH}"
-            )
 
         self.device = torch.device(
             "cuda"
@@ -45,188 +32,440 @@ class VoiceDistressDetector:
         )
 
         print(
-            f"Loading Voice Distress Model on {self.device}"
+            f"\nLoading pretrained Voice Emotion Model "
+            f"on {self.device}"
         )
 
-        self.model = VoiceDistressModelV3().to(
-            self.device
+        print(
+            f"Model: {MODEL_NAME}"
         )
 
-        checkpoint = torch.load(
-            MODEL_PATH,
-            map_location=self.device,
-        )
+        # --------------------------------------
+        # Load pretrained feature extractor
+        # --------------------------------------
 
-        print("\nCheckpoint Type :", type(checkpoint))
-
-        if isinstance(checkpoint, dict):
-            print("Checkpoint Keys :", checkpoint.keys())
-
-        if isinstance(checkpoint, dict):
-
-            if "model_state_dict" in checkpoint:
-
-                self.model.load_state_dict(
-                    checkpoint["model_state_dict"]
-                )
-
-            else:
-
-                self.model.load_state_dict(
-                    checkpoint
-                )
-
-        else:
-
-            self.model.load_state_dict(
-                checkpoint
+        self.feature_extractor = (
+            AutoFeatureExtractor.from_pretrained(
+                MODEL_NAME
             )
+        )
+
+        # --------------------------------------
+        # Load pretrained emotion classifier
+        # --------------------------------------
+
+        self.model = (
+            AutoModelForAudioClassification
+            .from_pretrained(
+                MODEL_NAME
+            )
+            .to(self.device)
+        )
 
         self.model.eval()
 
-        self.index_to_label = {
-            0: "normal",
-            1: "distress",
-        }
+        # --------------------------------------
+        # Emotion labels
+        # --------------------------------------
 
-    # ======================================
+        self.id2label = (
+            self.model.config.id2label
+        )
+
+        print(
+            "\nPretrained Voice Emotion Model "
+            "loaded successfully."
+        )
+
+        print(
+            "Labels:",
+            self.id2label
+        )
+
+
+    # ==========================================
+    # Audio Resampling
+    # ==========================================
+
+    @staticmethod
+    def resample_audio(
+        audio,
+        original_sample_rate,
+        target_sample_rate,
+    ):
+
+        if (
+            original_sample_rate
+            == target_sample_rate
+        ):
+            return audio
+
+        if len(audio) == 0:
+            return audio
+
+        # --------------------------------------
+        # Calculate new length
+        # --------------------------------------
+
+        duration = (
+            len(audio)
+            / original_sample_rate
+        )
+
+        new_length = max(
+            1,
+            int(
+                duration
+                * target_sample_rate
+            ),
+        )
+
+        # --------------------------------------
+        # Linear interpolation
+        # --------------------------------------
+
+        old_indices = np.linspace(
+            0,
+            len(audio) - 1,
+            num=len(audio),
+        )
+
+        new_indices = np.linspace(
+            0,
+            len(audio) - 1,
+            num=new_length,
+        )
+
+        resampled_audio = np.interp(
+            new_indices,
+            old_indices,
+            audio,
+        )
+
+        return resampled_audio.astype(
+            np.float32
+        )
+
+
+    # ==========================================
     # Prediction
-    # ======================================
+    # ==========================================
 
     def predict(
         self,
         audio_path,
     ):
 
-        audio_path = Path(audio_path)
+        audio_path = str(
+            audio_path
+        )
 
-        if not audio_path.exists():
+        # --------------------------------------
+        # Load audio using soundfile
+        # --------------------------------------
 
-            raise FileNotFoundError(
-                f"Audio file not found:\n{audio_path}"
+        try:
+
+            audio, sample_rate = (
+                sf.read(
+                    audio_path,
+                    dtype="float32",
+                )
             )
 
-        features = extract_mfcc(
-            str(audio_path)
+        except Exception as e:
+
+            raise RuntimeError(
+                f"Could not read audio file: {e}"
+            ) from e
+
+
+        # --------------------------------------
+        # Validate audio
+        # --------------------------------------
+
+        if audio is None:
+
+            raise ValueError(
+                "Audio data is empty."
+            )
+
+        if len(audio) == 0:
+
+            raise ValueError(
+                "Audio file contains no samples."
+            )
+
+
+        # --------------------------------------
+        # Stereo -> Mono
+        # --------------------------------------
+
+        if audio.ndim > 1:
+
+            audio = np.mean(
+                audio,
+                axis=1,
+            )
+
+
+        # --------------------------------------
+        # Resample -> 16 kHz
+        # --------------------------------------
+
+        audio = self.resample_audio(
+            audio=audio,
+            original_sample_rate=sample_rate,
+            target_sample_rate=TARGET_SAMPLE_RATE,
         )
 
-        features = (
-            torch.from_numpy(features)
-            .float()
-            .unsqueeze(0)
-            .to(self.device)
+
+        # --------------------------------------
+        # Make sure float32
+        # --------------------------------------
+
+        audio = np.asarray(
+            audio,
+            dtype=np.float32,
         )
+
+
+        # --------------------------------------
+        # Feature extraction
+        # --------------------------------------
+
+        inputs = (
+            self.feature_extractor(
+                audio,
+                sampling_rate=TARGET_SAMPLE_RATE,
+                return_tensors="pt",
+                padding=True,
+            )
+        )
+
+
+        # --------------------------------------
+        # Move tensors to device
+        # --------------------------------------
+
+        inputs = {
+            key: value.to(self.device)
+            for key, value in inputs.items()
+        }
+
+
+        # --------------------------------------
+        # Prediction
+        # --------------------------------------
 
         with torch.inference_mode():
 
             outputs = self.model(
-                features
+                **inputs
             )
 
-            print("\n==============================")
-            print("RAW LOGITS")
-            print("==============================")
-            print(outputs.cpu())
-
-            probabilities = torch.softmax(
-                outputs,
-                dim=1,
+            probabilities = (
+                torch.softmax(
+                    outputs.logits,
+                    dim=-1,
+                )
             )
 
-            normal_probability = probabilities[0][0].item()
-            distress_probability = probabilities[0][1].item()
 
-            print("\n==============================")
-            print("PROBABILITIES")
-            print("==============================")
+        # --------------------------------------
+        # Best prediction
+        # --------------------------------------
 
-            print(
-                f"Normal    : {normal_probability:.6f}"
-            )
+        prediction_index = int(
+            torch.argmax(
+                probabilities,
+                dim=-1,
+            ).item()
+        )
 
-            print(
-                f"Distress  : {distress_probability:.6f}"
-            )
+
+        confidence = float(
+            probabilities[
+                0,
+                prediction_index,
+            ].item()
+        )
+
+
+        # --------------------------------------
+        # Get label
+        # --------------------------------------
+
+        emotion = self.id2label.get(
+            prediction_index,
+            str(prediction_index),
+        )
+
+        emotion = str(
+            emotion
+        ).lower().strip()
+
 
         # ======================================
-        # Decision Threshold
+        # Distress Mapping
         # ======================================
+        #
+        # This pretrained model is an
+        # emotion classifier, NOT a direct
+        # distress classifier.
+        #
+        # GuardAI treats strong fear/anger
+        # emotions as distress signals.
+        #
 
-        THRESHOLD = 0.40
+        distress_emotions = {
+            "angry",
+            "fear",
+            "fearful",
+            "scared",
+            "afraid",
+        }
 
-        if distress_probability >= THRESHOLD:
 
-            prediction = 1
-            confidence = distress_probability
+        distress_detected = (
+            emotion
+            in distress_emotions
+        )
 
-        else:
 
-            prediction = 0
-            confidence = normal_probability
-
-        label = self.index_to_label[
-            prediction
-        ]
-
-        print("\n==============================")
-        print("DECISION")
-        print("==============================")
+        # ======================================
+        # Result Logging
+        # ======================================
 
         print(
-            f"Threshold : {THRESHOLD:.2f}"
+            "\n=============================="
         )
 
         print(
-            f"Predicted : {label}"
+            "VOICE EMOTION RESULT"
         )
+
+        print(
+            "=============================="
+        )
+
+        print(
+            f"Emotion     : {emotion}"
+        )
+
+        print(
+            f"Confidence  : "
+            f"{confidence * 100:.2f}%"
+        )
+
+        print(
+            f"Distress    : "
+            f"{distress_detected}"
+        )
+
+
+        # ======================================
+        # Return Result
+        # ======================================
 
         return {
 
+            "status": "success",
+
+            "emotion": emotion,
+
+            "confidence": round(
+                confidence * 100,
+                2,
+            ),
+
             "distress_detected":
-                label == "distress",
+                distress_detected,
 
-            "label":
-                label,
-
-            "confidence":
-                round(
-                    confidence * 100,
-                    2,
-                ),
+            "label": (
+                "distress"
+                if distress_detected
+                else "normal"
+            ),
 
         }
 
 
 # ==========================================
-# Testing
+# Local Test
 # ==========================================
 
 if __name__ == "__main__":
 
-    print("\n==============================")
+    print(
+        "\n=============================="
+    )
 
-    print("Voice Distress Detector V3")
+    print(
+        "Pretrained Voice Emotion Detector"
+    )
 
-    print("==============================")
+    print(
+        "=============================="
+    )
 
-    detector = VoiceDistressDetector()
 
-    print("\nModel Loaded Successfully!")
+    # --------------------------------------
+    # Initialize model
+    # --------------------------------------
 
-    test_audio = input(
+    detector = (
+        VoiceDistressDetector()
+    )
+
+
+    print(
+        "\nModel Loaded Successfully!"
+    )
+
+
+    # --------------------------------------
+    # Audio path
+    # --------------------------------------
+
+    audio_path = input(
         "\nEnter WAV file path: "
     ).strip()
 
-    result = detector.predict(
-        test_audio
-    )
 
-    print("\nPrediction")
+    # --------------------------------------
+    # Run prediction
+    # --------------------------------------
 
-    print("------------------------------")
+    try:
 
-    for key, value in result.items():
+        result = detector.predict(
+            audio_path
+        )
+
 
         print(
-            f"{key} : {value}"
+            "\nPrediction:"
+        )
+
+        print(
+            "------------------------------"
+        )
+
+
+        for key, value in result.items():
+
+            print(
+                f"{key}: {value}"
+            )
+
+
+    except Exception as e:
+
+        print(
+            "\nVoice prediction failed:"
+        )
+
+        print(
+            str(e)
         )

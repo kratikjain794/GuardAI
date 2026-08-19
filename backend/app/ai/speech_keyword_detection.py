@@ -1,7 +1,13 @@
 from pathlib import Path
 
+import numpy as np
+import soundfile as sf
 import torch
-from transformers import pipeline
+
+from transformers import (
+    WhisperProcessor,
+    WhisperForConditionalGeneration,
+)
 
 
 # ==========================================
@@ -10,7 +16,7 @@ from transformers import pipeline
 
 MODEL_NAME = "openai/whisper-tiny"
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+TARGET_SAMPLE_RATE = 16000
 
 
 # ==========================================
@@ -18,16 +24,16 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 # ==========================================
 
 EMERGENCY_KEYWORDS = [
-    "help",
     "help me",
     "save me",
     "emergency",
-    "bachao",
-    "bachaao",
     "mujhe bachao",
-    "madad",
+    "bachaao",
+    "bachao",
     "madad karo",
+    "madad",
     "police",
+    "help",
 ]
 
 
@@ -37,45 +43,198 @@ EMERGENCY_KEYWORDS = [
 
 class SpeechKeywordDetector:
 
-    _pipeline = None
+    _processor = None
+    _model = None
+    _device = None
 
     def __init__(self):
 
-        # ----------------------------------
+        # --------------------------------------
         # Load Whisper only once
-        # ----------------------------------
+        # --------------------------------------
 
-        if SpeechKeywordDetector._pipeline is None:
+        if (
+            SpeechKeywordDetector._processor
+            is None
+        ):
 
-            device = (
-                0
+            self.device = torch.device(
+                "cuda"
                 if torch.cuda.is_available()
-                else -1
+                else "cpu"
             )
 
             print(
                 "\nLoading Whisper Tiny Speech "
-                f"Model on "
-                f"{'CUDA' if device == 0 else 'CPU'}..."
+                f"Model on {self.device}..."
             )
 
-            SpeechKeywordDetector._pipeline = pipeline(
-                "automatic-speech-recognition",
-                model=MODEL_NAME,
-                device=device,
+            # ----------------------------------
+            # Processor
+            # ----------------------------------
+
+            SpeechKeywordDetector._processor = (
+                WhisperProcessor.from_pretrained(
+                    MODEL_NAME
+                )
+            )
+
+            # ----------------------------------
+            # Model
+            # ----------------------------------
+
+            SpeechKeywordDetector._model = (
+                WhisperForConditionalGeneration
+                .from_pretrained(
+                    MODEL_NAME
+                )
+                .to(self.device)
+            )
+
+            SpeechKeywordDetector._model.eval()
+
+            SpeechKeywordDetector._device = (
+                self.device
             )
 
             print(
                 "Whisper Tiny Loaded Successfully!"
             )
 
-        self.transcriber = (
-            SpeechKeywordDetector._pipeline
+        self.processor = (
+            SpeechKeywordDetector._processor
         )
 
-    # ======================================
+        self.model = (
+            SpeechKeywordDetector._model
+        )
+
+        self.device = (
+            SpeechKeywordDetector._device
+        )
+
+
+    # ==========================================
+    # Audio Resampling
+    # ==========================================
+
+    @staticmethod
+    def resample_audio(
+        audio,
+        original_sample_rate,
+        target_sample_rate,
+    ):
+
+        if (
+            original_sample_rate
+            == target_sample_rate
+        ):
+            return audio
+
+        if len(audio) == 0:
+            return audio
+
+        duration = (
+            len(audio)
+            / original_sample_rate
+        )
+
+        new_length = max(
+            1,
+            int(
+                duration
+                * target_sample_rate
+            ),
+        )
+
+        old_indices = np.linspace(
+            0,
+            len(audio) - 1,
+            num=len(audio),
+        )
+
+        new_indices = np.linspace(
+            0,
+            len(audio) - 1,
+            num=new_length,
+        )
+
+        resampled_audio = np.interp(
+            new_indices,
+            old_indices,
+            audio,
+        )
+
+        return resampled_audio.astype(
+            np.float32
+        )
+
+
+    # ==========================================
+    # Load Audio
+    # ==========================================
+
+    @staticmethod
+    def load_audio(audio_path):
+
+        try:
+
+            audio, sample_rate = sf.read(
+                str(audio_path),
+                dtype="float32",
+            )
+
+        except Exception as e:
+
+            raise RuntimeError(
+                f"Could not read audio file: {e}"
+            ) from e
+
+        if audio is None:
+
+            raise ValueError(
+                "Audio data is empty."
+            )
+
+        if len(audio) == 0:
+
+            raise ValueError(
+                "Audio file contains no samples."
+            )
+
+        # --------------------------------------
+        # Stereo -> Mono
+        # --------------------------------------
+
+        if audio.ndim > 1:
+
+            audio = np.mean(
+                audio,
+                axis=1,
+            )
+
+        # --------------------------------------
+        # Resample -> 16 kHz
+        # --------------------------------------
+
+        audio = (
+            SpeechKeywordDetector
+            .resample_audio(
+                audio=audio,
+                original_sample_rate=sample_rate,
+                target_sample_rate=TARGET_SAMPLE_RATE,
+            )
+        )
+
+        return np.asarray(
+            audio,
+            dtype=np.float32,
+        )
+
+
+    # ==========================================
     # Keyword Matching
-    # ======================================
+    # ==========================================
 
     @staticmethod
     def find_keyword(text):
@@ -95,10 +254,6 @@ class SpeechKeywordDetector:
             normalized.split()
         )
 
-        # Longer phrases first
-        # so "help me" is preferred
-        # over "help".
-
         keywords = sorted(
             EMERGENCY_KEYWORDS,
             key=len,
@@ -113,15 +268,20 @@ class SpeechKeywordDetector:
 
         return None
 
-    # ======================================
+
+    # ==========================================
     # Prediction
-    # ======================================
+    # ==========================================
 
     def predict(self, audio_path):
 
         audio_path = Path(
             audio_path
         )
+
+        # --------------------------------------
+        # Check audio file
+        # --------------------------------------
 
         if not audio_path.exists():
 
@@ -130,25 +290,71 @@ class SpeechKeywordDetector:
                 f"{audio_path}"
             )
 
-        # ----------------------------------
-        # Whisper transcription
-        # ----------------------------------
+        # --------------------------------------
+        # Load audio
+        # --------------------------------------
 
-        result = self.transcriber(
-            str(audio_path),
-            generate_kwargs={
-                "language": "en",
-                "task": "transcribe",
-            },
+        audio = self.load_audio(
+            audio_path
         )
 
-        transcript = str(
-            result.get("text", "")
-        ).strip()
+        print(
+            "\nAudio loaded successfully."
+        )
 
-        # ----------------------------------
+        print(
+            f"Audio samples : {len(audio)}"
+        )
+
+        print(
+            f"Sample rate   : "
+            f"{TARGET_SAMPLE_RATE} Hz"
+        )
+
+        # ======================================
+        # Whisper Processor
+        # ======================================
+
+        inputs = self.processor(
+            audio,
+            sampling_rate=TARGET_SAMPLE_RATE,
+            return_tensors="pt",
+        )
+
+        input_features = (
+            inputs.input_features
+            .to(self.device)
+        )
+
+        # ======================================
+        # Whisper Generation
+        # ======================================
+
+        with torch.inference_mode():
+
+            generated_ids = (
+                self.model.generate(
+                    input_features,
+                    language="english",
+                    task="transcribe",
+                )
+            )
+
+        # ======================================
+        # Decode
+        # ======================================
+
+        transcript = (
+            self.processor.batch_decode(
+                generated_ids,
+                skip_special_tokens=True,
+            )[0]
+            .strip()
+        )
+
+        # --------------------------------------
         # Emergency keyword
-        # ----------------------------------
+        # --------------------------------------
 
         keyword = self.find_keyword(
             transcript
@@ -158,7 +364,42 @@ class SpeechKeywordDetector:
             keyword is not None
         )
 
+        # ======================================
+        # Logging
+        # ======================================
+
+        print(
+            "\n=============================="
+        )
+
+        print(
+            "SPEECH RESULT"
+        )
+
+        print(
+            "=============================="
+        )
+
+        print(
+            f"Transcript : {transcript}"
+        )
+
+        print(
+            f"Keyword    : {keyword}"
+        )
+
+        print(
+            f"Emergency  : "
+            f"{emergency_detected}"
+        )
+
+        # ======================================
+        # Result
+        # ======================================
+
         return {
+
+            "status": "success",
 
             "emergency_detected":
                 emergency_detected,
@@ -202,20 +443,32 @@ if __name__ == "__main__":
         "\nEnter WAV file path: "
     ).strip()
 
-    result = detector.predict(
-        test_audio
-    )
+    try:
 
-    print(
-        "\nPrediction"
-    )
-
-    print(
-        "------------------------------"
-    )
-
-    for key, value in result.items():
+        result = detector.predict(
+            test_audio
+        )
 
         print(
-            f"{key} : {value}"
+            "\nPrediction"
+        )
+
+        print(
+            "------------------------------"
+        )
+
+        for key, value in result.items():
+
+            print(
+                f"{key} : {value}"
+            )
+
+    except Exception as e:
+
+        print(
+            "\nSpeech prediction failed:"
+        )
+
+        print(
+            str(e)
         )

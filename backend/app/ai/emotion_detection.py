@@ -13,15 +13,123 @@ from transformers import (
 # Configuration
 # ==========================================
 
-MODEL_NAME = (
-    "Dpngtm/wav2vec2-emotion-recognition"
-)
-
+MODEL_NAME = "Dpngtm/wav2vec2-emotion-recognition"
 SAMPLE_RATE = 16000
 
-BASE_DIR = (
-    Path(__file__).resolve().parents[2]
-)
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+
+# ==========================================
+# Shared Pretrained Model
+# ==========================================
+
+_SHARED_PROCESSOR = None
+_SHARED_MODEL = None
+_SHARED_DEVICE = None
+_SHARED_ID_TO_LABEL = None
+
+
+def load_shared_emotion_model():
+    """
+    Load the pretrained Wav2Vec2 emotion model
+    only ONCE per Python worker.
+
+    Voice and Emotion detectors both use this
+    same model instance.
+    """
+
+    global _SHARED_PROCESSOR
+    global _SHARED_MODEL
+    global _SHARED_DEVICE
+    global _SHARED_ID_TO_LABEL
+
+    if (
+        _SHARED_MODEL is not None
+        and _SHARED_PROCESSOR is not None
+    ):
+        return (
+            _SHARED_PROCESSOR,
+            _SHARED_MODEL,
+            _SHARED_DEVICE,
+            _SHARED_ID_TO_LABEL,
+        )
+
+    _SHARED_DEVICE = torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "cpu"
+    )
+
+    print(
+        "\n=========================================="
+    )
+    print(
+        "Loading SHARED pretrained Wav2Vec2 model"
+    )
+    print(
+        f"Model : {MODEL_NAME}"
+    )
+    print(
+        f"Device: {_SHARED_DEVICE}"
+    )
+    print(
+        "=========================================="
+    )
+
+    # --------------------------------------
+    # Processor
+    # --------------------------------------
+
+    _SHARED_PROCESSOR = (
+        AutoProcessor.from_pretrained(
+            MODEL_NAME
+        )
+    )
+
+    # --------------------------------------
+    # Model
+    # --------------------------------------
+
+    _SHARED_MODEL = (
+        AutoModelForAudioClassification
+        .from_pretrained(
+            MODEL_NAME
+        )
+        .to(_SHARED_DEVICE)
+    )
+
+    _SHARED_MODEL.eval()
+
+    # --------------------------------------
+    # Labels
+    # --------------------------------------
+
+    _SHARED_ID_TO_LABEL = (
+        _SHARED_MODEL.config.id2label
+    )
+
+    print(
+        "\nEmotion Label Mapping:"
+    )
+
+    for index, label in (
+        _SHARED_ID_TO_LABEL.items()
+    ):
+        print(
+            f"  {index} -> {label}"
+        )
+
+    print(
+        "\nShared pretrained Wav2Vec2 "
+        "loaded successfully!"
+    )
+
+    return (
+        _SHARED_PROCESSOR,
+        _SHARED_MODEL,
+        _SHARED_DEVICE,
+        _SHARED_ID_TO_LABEL,
+    )
 
 
 # ==========================================
@@ -32,63 +140,16 @@ class EmotionDetector:
 
     def __init__(self):
 
-        self.device = torch.device(
-            "cuda"
-            if torch.cuda.is_available()
-            else "cpu"
-        )
+        (
+            self.processor,
+            self.model,
+            self.device,
+            self.id_to_label,
+        ) = load_shared_emotion_model()
 
         print(
-            f"\nLoading pretrained Emotion Model on "
-            f"{self.device}"
-        )
-
-        # ----------------------------------
-        # Processor
-        # ----------------------------------
-
-        self.processor = (
-            AutoProcessor.from_pretrained(
-                MODEL_NAME
-            )
-        )
-
-        # ----------------------------------
-        # Pretrained Model
-        # ----------------------------------
-
-        self.model = (
-            AutoModelForAudioClassification
-            .from_pretrained(
-                MODEL_NAME
-            )
-            .to(self.device)
-        )
-
-        self.model.eval()
-
-        # ----------------------------------
-        # Read labels directly from model
-        # ----------------------------------
-
-        self.id_to_label = (
-            self.model.config.id2label
-        )
-
-        print(
-            "\nEmotion Label Mapping:"
-        )
-
-        for index, label in (
-            self.id_to_label.items()
-        ):
-            print(
-                f"  {index} -> {label}"
-            )
-
-        print(
-            "\nPretrained Emotion Model "
-            "Loaded Successfully!"
+            "EmotionDetector using shared "
+            "Wav2Vec2 model."
         )
 
 
@@ -104,10 +165,6 @@ class EmotionDetector:
         audio_path = Path(
             audio_path
         )
-
-        # ----------------------------------
-        # Check audio
-        # ----------------------------------
 
         if not audio_path.exists():
 
@@ -146,7 +203,7 @@ class EmotionDetector:
         )
 
         # ----------------------------------
-        # Move tensors to device
+        # Move tensors
         # ----------------------------------
 
         inputs = {
@@ -164,21 +221,19 @@ class EmotionDetector:
                 **inputs
             )
 
-            probabilities = (
-                torch.softmax(
-                    outputs.logits,
-                    dim=-1,
-                )
+            probabilities = torch.softmax(
+                outputs.logits,
+                dim=-1,
             )
 
-            prediction = (
+            prediction = int(
                 torch.argmax(
                     probabilities,
                     dim=-1,
                 ).item()
             )
 
-            confidence = (
+            confidence = float(
                 probabilities[
                     0,
                     prediction,
@@ -189,9 +244,14 @@ class EmotionDetector:
         # Label
         # ----------------------------------
 
-        emotion = self.id_to_label[
-            prediction
-        ]
+        emotion = self.id_to_label.get(
+            prediction,
+            str(prediction),
+        )
+
+        emotion = str(
+            emotion
+        ).lower()
 
         return {
             "emotion": emotion,

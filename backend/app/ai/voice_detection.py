@@ -1,18 +1,14 @@
 import numpy as np
 import soundfile as sf
-import torch
 
-from transformers import (
-    AutoFeatureExtractor,
-    AutoModelForAudioClassification,
+from app.ai.emotion_detection import (
+    load_shared_emotion_model,
 )
 
 
 # ==========================================
-# Pretrained Model
+# Configuration
 # ==========================================
-
-MODEL_NAME = "Dpngtm/wav2vec2-emotion-recognition"
 
 TARGET_SAMPLE_RATE = 16000
 
@@ -25,61 +21,16 @@ class VoiceDistressDetector:
 
     def __init__(self):
 
-        self.device = torch.device(
-            "cuda"
-            if torch.cuda.is_available()
-            else "cpu"
-        )
+        (
+            self.feature_extractor,
+            self.model,
+            self.device,
+            self.id2label,
+        ) = load_shared_emotion_model()
 
         print(
-            f"\nLoading pretrained Voice Emotion Model "
-            f"on {self.device}"
-        )
-
-        print(
-            f"Model: {MODEL_NAME}"
-        )
-
-        # --------------------------------------
-        # Load pretrained feature extractor
-        # --------------------------------------
-
-        self.feature_extractor = (
-            AutoFeatureExtractor.from_pretrained(
-                MODEL_NAME
-            )
-        )
-
-        # --------------------------------------
-        # Load pretrained emotion classifier
-        # --------------------------------------
-
-        self.model = (
-            AutoModelForAudioClassification
-            .from_pretrained(
-                MODEL_NAME
-            )
-            .to(self.device)
-        )
-
-        self.model.eval()
-
-        # --------------------------------------
-        # Emotion labels
-        # --------------------------------------
-
-        self.id2label = (
-            self.model.config.id2label
-        )
-
-        print(
-            "\nPretrained Voice Emotion Model "
-            "loaded successfully."
-        )
-
-        print(
-            "Labels:",
-            self.id2label
+            "\nVoiceDistressDetector using "
+            "shared pretrained Wav2Vec2 model."
         )
 
 
@@ -103,10 +54,6 @@ class VoiceDistressDetector:
         if len(audio) == 0:
             return audio
 
-        # --------------------------------------
-        # Calculate new length
-        # --------------------------------------
-
         duration = (
             len(audio)
             / original_sample_rate
@@ -119,10 +66,6 @@ class VoiceDistressDetector:
                 * target_sample_rate
             ),
         )
-
-        # --------------------------------------
-        # Linear interpolation
-        # --------------------------------------
 
         old_indices = np.linspace(
             0,
@@ -161,7 +104,7 @@ class VoiceDistressDetector:
         )
 
         # --------------------------------------
-        # Load audio using soundfile
+        # Load audio
         # --------------------------------------
 
         try:
@@ -181,7 +124,7 @@ class VoiceDistressDetector:
 
 
         # --------------------------------------
-        # Validate audio
+        # Validate
         # --------------------------------------
 
         if audio is None:
@@ -221,7 +164,7 @@ class VoiceDistressDetector:
 
 
         # --------------------------------------
-        # Make sure float32
+        # Float32
         # --------------------------------------
 
         audio = np.asarray(
@@ -245,7 +188,7 @@ class VoiceDistressDetector:
 
 
         # --------------------------------------
-        # Move tensors to device
+        # Move tensors
         # --------------------------------------
 
         inputs = {
@@ -257,6 +200,8 @@ class VoiceDistressDetector:
         # --------------------------------------
         # Prediction
         # --------------------------------------
+
+        import torch
 
         with torch.inference_mode():
 
@@ -293,7 +238,7 @@ class VoiceDistressDetector:
 
 
         # --------------------------------------
-        # Get label
+        # Label
         # --------------------------------------
 
         emotion = self.id2label.get(
@@ -309,14 +254,6 @@ class VoiceDistressDetector:
         # ======================================
         # Distress Mapping
         # ======================================
-        #
-        # This pretrained model is an
-        # emotion classifier, NOT a direct
-        # distress classifier.
-        #
-        # GuardAI treats strong fear/anger
-        # emotions as distress signals.
-        #
 
         distress_emotions = {
             "angry",
@@ -334,7 +271,7 @@ class VoiceDistressDetector:
 
 
         # ======================================
-        # Result Logging
+        # Logging
         # ======================================
 
         print(
@@ -365,19 +302,21 @@ class VoiceDistressDetector:
 
 
         # ======================================
-        # Return Result
+        # Result
         # ======================================
 
         return {
 
             "status": "success",
 
-            "emotion": emotion,
+            "emotion":
+                emotion,
 
-            "confidence": round(
-                confidence * 100,
-                2,
-            ),
+            "confidence":
+                round(
+                    confidence * 100,
+                    2,
+                ),
 
             "distress_detected":
                 distress_detected,
@@ -410,10 +349,6 @@ if __name__ == "__main__":
     )
 
 
-    # --------------------------------------
-    # Initialize model
-    # --------------------------------------
-
     detector = (
         VoiceDistressDetector()
     )
@@ -424,25 +359,16 @@ if __name__ == "__main__":
     )
 
 
-    # --------------------------------------
-    # Audio path
-    # --------------------------------------
-
     audio_path = input(
         "\nEnter WAV file path: "
     ).strip()
 
-
-    # --------------------------------------
-    # Run prediction
-    # --------------------------------------
 
     try:
 
         result = detector.predict(
             audio_path
         )
-
 
         print(
             "\nPrediction:"
@@ -451,7 +377,6 @@ if __name__ == "__main__":
         print(
             "------------------------------"
         )
-
 
         for key, value in result.items():
 
